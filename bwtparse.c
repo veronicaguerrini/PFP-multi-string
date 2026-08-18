@@ -186,6 +186,25 @@ static sa_index_t *compute_SA(uint32_t *Text, long n, long k)
   return SA;
 }
 
+static long store_map(char *basename, uint32_t *Text, long n, word_int_t num_seq) //2026
+{
+  FILE *map = open_aux_file(basename,"map","wb");
+  size_t s;
+  long k=0,r=1;
+  
+  for(long i=0;i<n;i++) {
+    if(Text[i]>k) k = Text[i];
+    if(Text[i]<num_seq){
+        s = fwrite(&Text[i],sizeof(word_int_t),1,map);
+        if(s!=1) die("Error writing to map file");
+        Text[i]=r++;
+    }
+  }
+  assert(r==num_seq);
+  if(fclose(map)!=0) die("Error closing map file");
+
+  return k;
+}
   
 static uint8_t *load_sa_info(Args *arg, long n)
 {  
@@ -242,16 +261,24 @@ int main(int argc, char *argv[])
 
   // read arguments 
   parseArgs(argc,argv,&arg);
+   
+  //Upload s and offset value
+  word_int_t s_offset[2];
+  FILE *info = open_aux_file(arg.basename,"info","rb");
+  s = fread(s_offset,sizeof(word_int_t),2,info);
+  if(s!=2) die("not enough info data!");
+  printf("info file contains %d and %d\n",s_offset[0],s_offset[1]);
+  fclose(info);
+   
   // start measuring wall clock time 
   time_t start_wc = time(NULL);
   // read parse file
   Text = read_parse(arg.basename,&n);
   
   // ------- compute largest input symbol (ie alphabet size-1)
-  long k=0;
-  for(long i=0;i<n;i++) {
-    if(Text[i]>k) k = Text[i];
-  }
+  //Modify Text and write the map to disk
+  long k = store_map(arg.basename,Text,n,s_offset[0]);
+   
   // -------- alloc and compute SA of the parse
   sa_index_t *SA = compute_SA(Text,n+1,k+1);
   
@@ -289,13 +316,7 @@ int main(int argc, char *argv[])
     if(fclose(da_out)!=0) die("da_out close");
     free(da_info);
   } 
-  //Upload s and offset value
-  word_int_t s_offset[2];
-  FILE *info = open_aux_file(arg.basename,"info","rb");
-  s = fread(s_offset,sizeof(word_int_t),2,info);
-  if(s!=2) die("not enough info data!");
-  printf("info file contains %d and %d\n",s_offset[0],s_offset[1]);
-  fclose(info);
+
   //Upload the .map file
   Map = read_map(arg.basename,&check);
 
