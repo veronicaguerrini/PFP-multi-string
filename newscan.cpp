@@ -342,56 +342,40 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, word_int_t offset)
   // open parse files. the old parse can be stored in a single file or in multiple files
   mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
   FILE *newp = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
-  FILE *bitvect = open_aux_file(arg.inputFileName.c_str(), "bitvector", "wb"); 
-  FILE *map = open_aux_file(arg.inputFileName.c_str(), "map", "wb"); 
-
+  
   // recompute occ as an extra check 
   vector<occ_int_t> occ(wfreq.size()+offset+1,0); 
   uint64_t hash;
   word_int_t rank, rank_tmp,r=1; 
-  uint8_t bit=0; 
   while(true) {
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
     if(s==0) break;
     if(s!=1) die("Unexpected parse EOF");
     rank_tmp=wfreq.at(hash).rank;
     if (wfreq.at(hash).str[0]==EoString){      
-      rank=r++;
-      bit=1;
-      s = fwrite(&rank_tmp,sizeof(rank_tmp),1,map); 
-      if(s!=1) die("Error writing to map file"); 
+      r++;
+      rank=rank_tmp;
     }
     else{
       rank = rank_tmp+offset;
-      bit=0;
     }
     occ[rank]++;
-    s = fwrite(&bit,sizeof(bit),1,bitvect); 
     s = fwrite(&rank,sizeof(rank),1,newp);
     if(s!=1) die("Error writing to new parse file");
   }
   size_t s = fwrite(&r,sizeof(rank),1,newp);
 
   if(s!=1) die("Error writing to new parse file");
-  if(fclose(bitvect)!=0) die("Error closing bitvector file"); 
-  if(fclose(map)!=0) die("Error closing map file"); 
   if(fclose(newp)!=0) die("Error closing new parse file");
   if(mfclose(moldp)!=0) die("Error closing old parse segment");
 
   // check old and recomputed occ's coincide 
-  occ_int_t sum1=0;
   for(auto& x : wfreq){
-    if (x.second.str[0]==EoString){
-      //compute sums to check
-      sum1+=x.second.occ;
-    }
+    if (x.second.str[0]==EoString)
+      assert(x.second.occ==occ[x.second.rank]);
     else
       assert(x.second.occ==occ[x.second.rank+offset]);
   }
-  for(uint32_t i=1;i<r;i++){
-    assert(occ[i]==1);
-  }
-  assert(sum1==r-1);
 }
  
 
@@ -531,11 +515,11 @@ int main(int argc, char** argv)
   s-=g;
   //write offset s-g 
   if(fwrite(&s,sizeof(word_int_t),1,info)!=1) die("info write error"); 
-  if(fclose(info)!=0) die("Error closing info file"); //04_2026
+  if(fclose(info)!=0) die("Error closing info file"); 
 
   // remap parse file
   start_wc = time(NULL);
-  cout << "Generating remapped parse file and bitvector\n"; //04_2026
+  cout << "Generating remapped parse file together with the map\n";
   remapParse(arg, wordFreq,s);
   cout << "Remapping parse file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";  
   cout << "==== Elapsed time: " << difftime(time(NULL),start_main) << " wall clock seconds\n";        
