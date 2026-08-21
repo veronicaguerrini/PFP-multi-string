@@ -69,7 +69,7 @@ def main():
 
     # ----------- computation of the BWT of the parsing
     start = time.time()
-    parse_size = os.path.getsize(args.input+".parse")/4
+    parse_size = os.path.getsize(args.input+".parse_map")/4
     if(parse_size >=  (2**32-1) ):
       print("Sorry, the parse contains %d words" %  parse_size )
       print("which is more than my current limit 2^32-2")
@@ -128,7 +128,7 @@ def main():
 def delete_temp_files(args,logfile,logfile_name):
     if args.k==False:  
       print("==== Deleting temporary files.") # no need to show the command
-      command = "rm -f {file}.parse {file}.parse_old {file}.bitvector {file}.bitdict {file}.dict {file}.info {file}.map {file}.ilist {file}.occ".format(file=args.input)
+      command = "rm -f {file}.parse_map {file}.parse_old {file}.bitdict {file}.dict {file}.info {file}.ilist {file}.occ".format(file=args.input)
       if(execute_command(command,logfile,logfile_name)!=True):
         return
       if args.S:
