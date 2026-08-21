@@ -14,12 +14,15 @@
 #include <random>
 #include <vector>
 #include <map>
-#ifdef GZSTREAM
-#include <gzstream.h>
-#endif
+#include <zlib.h>
+#include <stdio.h>
+
 extern "C" {
 #include "utils.h"
 }
+
+#include "kseq.h"
+KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
 // using namespace __gnu_cxx;
@@ -220,17 +223,13 @@ static void save_update_word_2(Args& arg, string& w, map<uint64_t,word_stats>& f
 uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq, uint32_t& num_tot_seqs,uint32_t& num_starting)
 {
   uint64_t tot_char_read=0; //num char read
-  //open a, possibly compressed, input file
+  //open a, possibly compressed, input FASTA file
   string fnam = arg.inputFileName;
-  #ifdef GZSTREAM 
-  igzstream f(fnam.c_str());
-  #else
-  ifstream f(fnam);
-  #endif    
-  if(!f.rdbuf()->is_open()) {// is_open does not work on igzstreams 
-    perror(__func__);
-    throw new std::runtime_error("Cannot open input file " + fnam);
-  }
+  
+  gzFile fp;
+  kseq_t *seq;
+  fp = gzopen(fnam.c_str(), "r");
+  seq = kseq_init(fp);
 
   // open the 1st pass parsing file 
   FILE *g = open_aux_file(arg.inputFileName.c_str(),EXTPARS0,"wb");
@@ -241,40 +240,42 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq, uint32_t& n
     da_file = open_aux_file(arg.inputFileName.c_str(),"dai","wb");
   
   // main loop on the chars of the input file
-  int c;
+  uint32_t lenSeq, len;
   uint64_t pos = 0; // ending position +1 of previous word in the original text, used for computing sa_info 
   assert(IBYTES<=sizeof(pos)); // IBYTES bytes of pos are written to the sa info file 
   
   string word("");
   // init empty KR window: constructor only needs window size
   KR_window krw(arg.w);
-  while( (c = f.get()) != EOF ) {
-    word.append(1,EoString);
-    krw.reset();
-    pos_rel=0;
-    word.append(1,c);
-    uint64_t hash = krw.addchar(c);
-    assert(krw.tot_char==1);
-    while( (c = f.get()) != EoString) { 
-      if(c<=Dollar) {
-        cerr << "Invalid char found in input file. Exiting...\n"; exit(1);
+  
+  while ((kseq_read(seq)) >= 0) {
+      word.append(1,EoString);
+      krw.reset();
+      pos_rel=0;
+      lenSeq = strlen(seq->seq.s);
+      word.append(1,(seq->seq.s)[0]);
+      uint64_t hash = krw.addchar((seq->seq.s)[0]);
+      assert(krw.tot_char==1);
+      for(len=1;len<lenSeq;len++){
+        word.append(1,(seq->seq.s)[len]);
+        hash = krw.addchar((seq->seq.s)[len]);
+        if(hash%arg.p==0) {
+          save_update_word(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1); 
+        }
       }
-      word.append(1,c);
-      hash = krw.addchar(c);
-      if(hash%arg.p==0) {
-        save_update_word(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1); 
+      word.append(1,EoString);
+      save_update_word_2(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1);
+      num_tot_seqs++;
+      word="";
+      tot_char_read+=krw.tot_char+1;
+      if(pos!=tot_char_read){
+        cerr << "Pos: " << pos << " tot " << tot_char_read << endl;
       }
-    }
-    word.append(1,EoString);
-    save_update_word_2(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1);
-    num_tot_seqs++; //2026
-    word="";
-    tot_char_read+=krw.tot_char+1;
-    if(pos!=tot_char_read){
-      cerr << "Pos: " << pos << " tot " << tot_char_read << endl;
-    }
-    assert(pos==tot_char_read);
+      assert(pos==tot_char_read);
   }
+  kseq_destroy(seq);
+  gzclose(fp);
+  
   // close input and output files 
   if(sa_file) if(fclose(sa_file)!=0) die("Error closing SA file");
   if(da_file) if(fclose(da_file)!=0) die("Error closing DA file");
@@ -282,7 +283,6 @@ uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq, uint32_t& n
   if(fclose(g)!=0) die("Error closing parse file");
   if(pos!=tot_char_read) cerr << "Pos: " << pos << " tot " << tot_char_read << endl;
   
-  f.close();
   return tot_char_read;
 }
 
