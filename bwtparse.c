@@ -127,6 +127,14 @@ static uint32_t *read_map(char *basename, long *tsize)
     (void) e; die(msg);
   }
   if(fclose(map_file)!=0) die("map file close"); 
+  //Delete map file
+  char *filename;
+  int e = asprintf(&filename,"%s.map",basename);
+  if(e<1) die("asprint error");
+  if (remove(filename) == 0)
+    printf("Deleted %s.\n", filename);
+  else
+    printf("Failed to delete %s.\n", filename);
   *tsize= n;
   return MAP;
 } 
