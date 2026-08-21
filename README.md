@@ -1,5 +1,5 @@
 # PFP-multi-string
-Tool to build the multi-string BWT and optionally the Suffix Array and the Document Array of string collections using the Prefix-Free Parsing preprocessing (PFP).
+Tool to build the multi-string BWT and optionally the Document Array of string collections using the Prefix-Free Parsing preprocessing (PFP).
 
 ### Download and Compile
 
