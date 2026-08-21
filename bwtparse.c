@@ -12,7 +12,7 @@
 #define MAX_DISTINCT_WORDS (INT32_MAX -1)
 typedef uint32_t word_int_t;
 
-// Input: file.parse, [file.sai], [file.dai]
+// Input: file.parse_map, [file.sai], [file.dai]
 // Output: file.ilist, [file.bwsai], [file.bwdai]
 
 // Compute the SA of a parsing and its associated BWT
@@ -133,7 +133,7 @@ static uint32_t *read_map(char *basename, long *tsize)
 static void print_help(char *name)
 {
   printf("Usage: %s <basename> [options]\n\n", name);
-  puts("Compute the BWT of basename.parse and store its inverted list occurrence");
+  puts("Compute the BWT of the parse and store its inverted list occurrence");
   puts("  Options:");
   puts("\t-h  \tshow help and exit");
   puts("\t-s  \tpermute also basename."EXTSAI " file");
