@@ -12,7 +12,7 @@
 #define SABYTES IBYTES   // bytes used to write a suffix array value in the output .sa file 
 
 // file name extensions
-#define EXTPARSE "parse"
+#define EXTPARSE "parse_map"
 #define EXTPARS0 "parse_old"
 #define EXTOCC   "occ"
 #define EXTDICT  "dict"
