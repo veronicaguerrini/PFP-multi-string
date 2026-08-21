@@ -10,9 +10,9 @@ make
 ```
 ### Usage
 
-To build the multi-string BWT for file *test.txt* just type
+To build the multi-string BWT for file *test.fasta* just type
 ```sh
-./PFP-multi-string test.txt
+./PFP-multi-string test.fasta
 ```
 
 The input file cannot contain the characters 0, 1 or 2, which are used internally by the algorithm, and the character '$', which is internally used as end-of-string marker.
