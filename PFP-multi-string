@@ -12,7 +12,7 @@ Tool to build the multi-string BWT adapted from
    
 The input file cannot contain the characters 0, 1 or 2 which are
 used internally by the algorithm. The separators must be $. 
-The character 0 is used as the EOF in the output BWT.
+The character $ is used as the EOS in the output multi-string BWT.
 """
 
 # absolute path of auxiliary executables
