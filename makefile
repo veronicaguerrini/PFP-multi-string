@@ -24,7 +24,7 @@ bwtparse64: bwtparse.c gsa/gsacak64.o utils.o malloc_count.o
 	$(CC) $(CFLAGS) -o $@ $^ -ldl -DM64
 
 newscan.x: newscan.cpp malloc_count.o utils.o
-	$(CXX) $(CXX_FLAGS) -o $@ $^ -ldl
+	$(CXX) $(CXX_FLAGS) -o $@ $^ -ldl -lz
 
 # prefix free multi-string BWT construction
 pfmultistringbwt.x: pfmultistringbwt.cpp gsa/gsacak.o utils.o malloc_count.o
