@@ -176,7 +176,7 @@ static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>& fre
 
 static void save_update_word_2(Args& arg, string& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
 {
-  size_t minsize = arg.w; 
+  size_t minsize = 2; 
   if (w.size() <= minsize)
     cerr << "w = " << w << endl;
   assert(w.size() > minsize);
