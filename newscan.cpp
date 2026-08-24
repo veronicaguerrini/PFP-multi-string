@@ -209,7 +209,7 @@ static void save_update_word_2(Args& arg, string& w, map<uint64_t,word_stats>& f
   }
 
   if(pos_rel==0)  pos += w.size()-1; // -1 is for the initial $ of the first word
-  else pos += w.size() -minsize;
+  else pos += w.size() -arg.w;
   if(sa) if(fwrite(&pos,IBYTES,1,sa)!=1) die("Error writing to sa info file");
   if(da) if(fwrite(&s,sizeof(num_startingWithDollar),1,da)!=1) die("Error writing to da info file"); //04_2026
   
