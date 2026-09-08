@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <random>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <zlib.h>
 #include <stdio.h>
 
@@ -130,7 +130,7 @@ uint64_t kr_hash(string s) {
 
 // save current word in the freq map and update it leaving only the 
 // last minsize chars which is the overlap with next word  
-static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
+static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
 {
   size_t minsize = arg.w; 
 
@@ -174,7 +174,7 @@ static void save_update_word(Args& arg, string& w, map<uint64_t,word_stats>& fre
   w.assign(overlap);
 }
 
-static void save_update_word_2(Args& arg, string& w, map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
+static void save_update_word_2(Args& arg, string& w, unordered_map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
 {
   size_t minsize = 2; 
   if (w.size() <= minsize)
@@ -220,7 +220,7 @@ static void save_update_word_2(Args& arg, string& w, map<uint64_t,word_stats>& f
 
 // prefix free parse of file fnam. w is the window size, p is the modulus 
 // use a KR-hash as the word ID that is immediately written to the parse file
-uint64_t process_file(Args& arg, map<uint64_t,word_stats>& wordFreq, uint32_t& num_tot_seqs,uint32_t& num_starting)
+uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, uint32_t& num_tot_seqs,uint32_t& num_starting)
 {
   uint64_t tot_char_read=0; //num char read
   //open a, possibly compressed, input FASTA file
@@ -294,7 +294,7 @@ bool pstringCompare(const string *a, const string *b)
 
 // given the sorted dictionary and the frequency map write the dictionary and occ files
 // also compute the 1-based rank for each hash
-void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const string *> &sortedDict)
+void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<const string *> &sortedDict)
 {
   assert(sortedDict.size() == wfreq.size());
   FILE *fdict, *fwlen=NULL, *focc=NULL;
@@ -316,7 +316,8 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const strin
     //---
     //assert(len>(size_t)arg.w);
     uint64_t hash = kr_hash(*x);
-    auto& wf = wfreq.at(hash);
+    //auto& wf = wfreq.at(hash);
+    auto& wf = wfreq[hash];
     assert(wf.occ>0);
     size_t s = fwrite(word,1,len, fdict);
     if(s!=len) die("Error writing to DICT file");
@@ -337,7 +338,7 @@ void writeDictOcc(Args &arg, map<uint64_t,word_stats> &wfreq, vector<const strin
   if(fclose(fdict)!=0) die("Error closing DICT file");
 }
 
-void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, word_int_t offset) 
+void remapParse(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, word_int_t offset) 
 {
   // open parse files. the old parse can be stored in a single file or in multiple files
   mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
@@ -351,8 +352,10 @@ void remapParse(Args &arg, map<uint64_t,word_stats> &wfreq, word_int_t offset)
     size_t s = mfread(&hash,sizeof(hash),1,moldp);
     if(s==0) break;
     if(s!=1) die("Unexpected parse EOF");
-    rank_tmp=wfreq.at(hash).rank;
-    if (wfreq.at(hash).str[0]==EoString){      
+    //rank_tmp=wfreq.at(hash).rank;
+    rank_tmp=wfreq[hash].rank;
+    //if (wfreq.at(hash).str[0]==EoString){      
+    if (wfreq[hash].str[0]==EoString){      
       r++;
       rank=rank_tmp;
     }
@@ -460,7 +463,7 @@ int main(int argc, char** argv)
   time_t start_main = time(NULL);
   time_t start_wc = start_main;  
   // init sorted map counting the number of occurrences of each word
-  map<uint64_t,word_stats> wordFreq;  
+  unordered_map<uint64_t,word_stats> wordFreq;  
   uint64_t totChar;
   word_int_t s=0,g=0;
   // ------------ parsing input file 

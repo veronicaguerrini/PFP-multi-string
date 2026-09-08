@@ -1,6 +1,6 @@
 # compilation flags
-CXX_FLAGS=-std=c++11 -O3 -Wall -Wextra -g
-CFLAGS=-O3 -Wall -std=c11 -g
+CXX_FLAGS=-std=c++11 -O3 -Wall -Wextra -DNDEBUG 
+CFLAGS=-O3 -Wall -std=c11 
 CC=gcc
 
 # executables not using threads (and therefore not needing the thread library)
