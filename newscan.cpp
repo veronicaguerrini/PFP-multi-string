@@ -114,7 +114,7 @@ struct KR_window {
 
 // compute 64-bit KR hash of a string 
 // to avoid overflows in 64 bit aritmethic the prime is taken < 2**55
-uint64_t kr_hash(string s) {
+uint64_t kr_hash(const string &s) {
     uint64_t hash = 0;
     //const uint64_t prime = 3355443229;     // next prime(2**31+2**30+2**27)
     const uint64_t prime = 27162335252586509; // next prime (2**54 + 2**53 + 2**47 + 2**13)
@@ -144,14 +144,19 @@ static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_s
   if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
 
   // update frequency table for current hash
-  if(freq.find(hash)==freq.end()) {
+  auto it = freq.find(hash);
+  if(it==freq.end()) {
      if(w[0]==EoString)
         num_startingWithDollar++; 
-      freq[hash].occ = 1; // new hash
-      freq[hash].str = w; 
+      auto& new_freq = freq[hash];
+      new_freq.occ = 1;
+      new_freq.str = w;
+      //freq[hash].occ = 1; // new hash
+      //freq[hash].str = w; 
   }
   else {
-      freq[hash].occ += 1; // known hash
+      //freq[hash].occ += 1; // known hash
+      it->second.occ += 1;
       if(freq[hash].occ <=0) {
         cerr << "Emergency exit! Maximum # of occurence of dictionary word (";
         cerr<< MAX_WORD_OCC << ") exceeded\n";
@@ -188,14 +193,19 @@ static void save_update_word_2(Args& arg, string& w, unordered_map<uint64_t,word
   if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
 
   // update frequency table for current hash
-  if(freq.find(hash)==freq.end()) {
+  auto it = freq.find(hash);
+  if(it==freq.end()) {
       if(w[0]==EoString) //2026
         num_startingWithDollar++;
-      freq[hash].occ = 1; // new hash
-      freq[hash].str = w; 
+      auto& new_freq = freq[hash];
+      new_freq.occ = 1;
+      new_freq.str = w;
+      //freq[hash].occ = 1; // new hash
+      //freq[hash].str = w; 
   }
   else {
-      freq[hash].occ += 1; // known hash
+      //freq[hash].occ += 1; // known hash
+      it->second.occ += 1;
       if(freq[hash].occ <=0) {
         cerr << "Emergency exit! Maximum # of occurence of dictionary word (";
         cerr<< MAX_WORD_OCC << ") exceeded\n";
@@ -268,9 +278,11 @@ uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, u
       num_tot_seqs++;
       word="";
       tot_char_read+=krw.tot_char+1;
+      /*
       if(pos!=tot_char_read){
         cerr << "Pos: " << pos << " tot " << tot_char_read << endl;
       }
+      */
       assert(pos==tot_char_read);
   }
   kseq_destroy(seq);
