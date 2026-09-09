@@ -299,14 +299,18 @@ uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, u
 }
 
 // function used to compare two string pointers
-bool pstringCompare(const string *a, const string *b)
+//bool pstringCompare(const string *a, const string *b)
+//{
+//  return *a <= *b;
+//}
+bool pstringCompare(const pair<uint64_t, const string*> &a, const pair<uint64_t, const string*> &b)
 {
-  return *a <= *b;
+  return *(a.second) < *(b.second);
 }
 
 // given the sorted dictionary and the frequency map write the dictionary and occ files
 // also compute the 1-based rank for each hash
-void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<const string *> &sortedDict)
+void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<pair<uint64_t, const string*>> &sortedDict)
 {
   assert(sortedDict.size() == wfreq.size());
   FILE *fdict, *fwlen=NULL, *focc=NULL;
@@ -318,8 +322,8 @@ void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<c
   
   word_int_t wrank = 1, num_bitdict=0; // current word rank (1 based)
   for(auto x: sortedDict) {          // *x is the string representing the dictionary word
-    const char *word = (*x).data();       // current dictionary word
-    size_t len = (*x).size();  // offset and length of word
+    const char *word = (*(x.second)).data();       // current dictionary word
+    size_t len = (*(x.second)).size();  // offset and length of word
     uint8_t bit=0;
     if(word[len-1]==EoString){ //dict word ending with EoString
       bit=1;
@@ -327,7 +331,9 @@ void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<c
     }
     //---
     //assert(len>(size_t)arg.w);
-    uint64_t hash = kr_hash(*x);
+    //uint64_t hash = kr_hash(*x);
+    uint64_t hash = x.first;
+
     //auto& wf = wfreq.at(hash);
     auto& wf = wfreq[hash];
     assert(wf.occ>0);
@@ -501,7 +507,7 @@ int main(int argc, char** argv)
   // -------------- second pass  
   start_wc = time(NULL);
   // create array of dictionary words
-  vector<const string *> dictArray;
+  vector<pair<uint64_t, const string*>> dictArray;
   dictArray.reserve(totDWord);
   // fill array
   uint64_t sumLen = 0;
@@ -509,7 +515,8 @@ int main(int argc, char** argv)
   for (auto& x: wordFreq) {
     sumLen += x.second.str.size();
     totWord += x.second.occ;
-    dictArray.push_back(&x.second.str);
+    //dictArray.push_back(&x.second.str);
+    dictArray.push_back({x.first, &x.second.str});
   }
   assert(dictArray.size()==totDWord);
   cout << "Sum of lenghts of dictionary words: " << sumLen << endl; 
