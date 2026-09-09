@@ -130,7 +130,7 @@ uint64_t kr_hash(const string &s) {
 
 // save current word in the freq map and update it leaving only the 
 // last minsize chars which is the overlap with next word  
-static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
+static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_stats>& freq, vector<uint64_t> &parse, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
 {
   size_t minsize = arg.w; 
 
@@ -141,7 +141,8 @@ static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_s
   
   // get the hash value and write it to the temporary parse file
   uint64_t hash = kr_hash(w);
-  if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
+  //if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
+  parse.push_back(hash);
 
   // update frequency table for current hash
   auto it = freq.find(hash);
@@ -157,12 +158,14 @@ static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_s
   else {
       //freq[hash].occ += 1; // known hash
       it->second.occ += 1;
-      if(freq[hash].occ <=0) {
+      //if(freq[hash].occ <=0) {
+      if(it->second.occ <= 0) {
         cerr << "Emergency exit! Maximum # of occurence of dictionary word (";
         cerr<< MAX_WORD_OCC << ") exceeded\n";
         exit(1);
       }
-      if(freq[hash].str != w) {
+      //if(freq[hash].str != w) {
+      if(it->second.str != w) {
         cerr << "Emergency exit! Hash collision for strings:\n";
         cerr << freq[hash].str << "\n  vs\n" <<  w << endl;
         exit(1);
@@ -179,7 +182,7 @@ static void save_update_word(Args& arg, string& w, unordered_map<uint64_t,word_s
   w.assign(overlap);
 }
 
-static void save_update_word_2(Args& arg, string& w, unordered_map<uint64_t,word_stats>& freq, FILE *tmp_parse_file, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
+static void save_update_word_2(Args& arg, string& w, unordered_map<uint64_t,word_stats>& freq, vector<uint64_t> &parse, FILE *sa, FILE *da, uint64_t &pos, uint32_t& num_startingWithDollar, uint32_t s) //2026
 {
   size_t minsize = 2; 
   if (w.size() <= minsize)
@@ -190,7 +193,8 @@ static void save_update_word_2(Args& arg, string& w, unordered_map<uint64_t,word
   
   // get the hash value and write it to the temporary parse file
   uint64_t hash = kr_hash(w);
-  if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
+  //if(fwrite(&hash,sizeof(hash),1,tmp_parse_file)!=1) die("parse write error");
+  parse.push_back(hash);
 
   // update frequency table for current hash
   auto it = freq.find(hash);
@@ -230,7 +234,7 @@ static void save_update_word_2(Args& arg, string& w, unordered_map<uint64_t,word
 
 // prefix free parse of file fnam. w is the window size, p is the modulus 
 // use a KR-hash as the word ID that is immediately written to the parse file
-uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, uint32_t& num_tot_seqs,uint32_t& num_starting)
+uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, uint32_t& num_tot_seqs,uint32_t& num_starting, vector<uint64_t> &parse)
 {
   uint64_t tot_char_read=0; //num char read
   //open a, possibly compressed, input FASTA file
@@ -242,7 +246,7 @@ uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, u
   seq = kseq_init(fp);
 
   // open the 1st pass parsing file 
-  FILE *g = open_aux_file(arg.inputFileName.c_str(),EXTPARS0,"wb");
+  //FILE *g = open_aux_file(arg.inputFileName.c_str(),EXTPARS0,"wb");
   FILE *sa_file = NULL, *da_file=NULL;
   if(arg.SAinfo) 
     sa_file = open_aux_file(arg.inputFileName.c_str(),EXTSAI,"wb");
@@ -270,11 +274,13 @@ uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, u
         word.append(1,(seq->seq.s)[len]);
         hash = krw.addchar((seq->seq.s)[len]);
         if(hash%arg.p==0) {
-          save_update_word(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1); 
+          //save_update_word(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1); 
+          save_update_word(arg,word,wordFreq,parse,sa_file,da_file,pos,num_starting,num_tot_seqs+1); 
         }
       }
       word.append(1,EoString);
-      save_update_word_2(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1);
+      //save_update_word_2(arg,word,wordFreq,g,sa_file,da_file,pos,num_starting,num_tot_seqs+1);
+      save_update_word_2(arg,word,wordFreq,parse,sa_file,da_file,pos,num_starting,num_tot_seqs+1);
       num_tot_seqs++;
       word="";
       tot_char_read+=krw.tot_char+1;
@@ -292,7 +298,7 @@ uint64_t process_file(Args& arg, unordered_map<uint64_t,word_stats>& wordFreq, u
   if(sa_file) if(fclose(sa_file)!=0) die("Error closing SA file");
   if(da_file) if(fclose(da_file)!=0) die("Error closing DA file");
   
-  if(fclose(g)!=0) die("Error closing parse file");
+  //if(fclose(g)!=0) die("Error closing parse file");
   if(pos!=tot_char_read) cerr << "Pos: " << pos << " tot " << tot_char_read << endl;
   
   return tot_char_read;
@@ -333,7 +339,6 @@ void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<p
     //assert(len>(size_t)arg.w);
     //uint64_t hash = kr_hash(*x);
     uint64_t hash = x.first;
-
     //auto& wf = wfreq.at(hash);
     auto& wf = wfreq[hash];
     assert(wf.occ>0);
@@ -356,20 +361,21 @@ void writeDictOcc(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, vector<p
   if(fclose(fdict)!=0) die("Error closing DICT file");
 }
 
-void remapParse(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, word_int_t offset) 
+void remapParse(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, word_int_t offset, vector<uint64_t> &parse) 
 {
   // open parse files. the old parse can be stored in a single file or in multiple files
-  mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
+  //mFile *moldp = mopen_aux_file(arg.inputFileName.c_str(), EXTPARS0, arg.th);
   FILE *newp = open_aux_file(arg.inputFileName.c_str(), EXTPARSE, "wb");
   
   // recompute occ as an extra check 
   vector<occ_int_t> occ(wfreq.size()+offset+1,0); 
-  uint64_t hash;
+  //uint64_t hash;
   word_int_t rank, rank_tmp,r=1; 
-  while(true) {
-    size_t s = mfread(&hash,sizeof(hash),1,moldp);
-    if(s==0) break;
-    if(s!=1) die("Unexpected parse EOF");
+  //while(true) {
+  //  size_t s = mfread(&hash,sizeof(hash),1,moldp);
+  //  if(s==0) break;
+  //  if(s!=1) die("Unexpected parse EOF");
+  for(uint64_t hash : parse) {
     //rank_tmp=wfreq.at(hash).rank;
     rank_tmp=wfreq[hash].rank;
     //if (wfreq.at(hash).str[0]==EoString){      
@@ -381,14 +387,14 @@ void remapParse(Args &arg, unordered_map<uint64_t,word_stats> &wfreq, word_int_t
       rank = rank_tmp+offset;
     }
     occ[rank]++;
-    s = fwrite(&rank,sizeof(rank),1,newp);
+    size_t s = fwrite(&rank,sizeof(rank),1,newp);
     if(s!=1) die("Error writing to new parse file");
   }
   size_t s = fwrite(&r,sizeof(rank),1,newp);
 
   if(s!=1) die("Error writing to new parse file");
   if(fclose(newp)!=0) die("Error closing new parse file");
-  if(mfclose(moldp)!=0) die("Error closing old parse segment");
+  //if(mfclose(moldp)!=0) die("Error closing old parse segment");
 
   // check old and recomputed occ's coincide 
   for(auto& x : wfreq){
@@ -484,9 +490,10 @@ int main(int argc, char** argv)
   unordered_map<uint64_t,word_stats> wordFreq;  
   uint64_t totChar;
   word_int_t s=0,g=0;
+  vector<uint64_t> parse;
   // ------------ parsing input file 
   try {
-      totChar = process_file(arg,wordFreq,s,g); 
+      totChar = process_file(arg,wordFreq,s,g,parse); 
   }
   catch(const std::bad_alloc&) {
       cout << "Out of memory (parsing phase)... emergency exit\n";
@@ -542,7 +549,7 @@ int main(int argc, char** argv)
   // remap parse file
   start_wc = time(NULL);
   cout << "Generating remapped parse file together with the map\n";
-  remapParse(arg, wordFreq,s);
+  remapParse(arg, wordFreq,s, parse);
   cout << "Remapping parse file took: " << difftime(time(NULL),start_wc) << " wall clock seconds\n";  
   cout << "==== Elapsed time: " << difftime(time(NULL),start_main) << " wall clock seconds\n";        
   return 0;

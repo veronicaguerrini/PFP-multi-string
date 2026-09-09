@@ -1,5 +1,5 @@
 # compilation flags
-CXX_FLAGS=-std=c++11 -O3 -Wall -Wextra -DNDEBUG 
+CXX_FLAGS=-std=c++11 -O3 -Wall -Wextra 
 CFLAGS=-O3 -Wall -std=c11 
 CC=gcc
 
